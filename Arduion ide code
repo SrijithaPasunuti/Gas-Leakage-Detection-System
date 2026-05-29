@@ -1,0 +1,67 @@
+#define BLYNK_TEMPLATE_ID "TMPL3jcSCwSCX"
+#define BLYNK_TEMPLATE_NAME "Gas Leakage Detection"
+#define BLYNK_AUTH_TOKEN "qUZNC4lfUh8T7GdwAhZZSHyT-f4O0hNt"
+
+#include <WiFi.h>
+#include <WiFiClient.h>
+#include <BlynkSimpleEsp32.h>
+
+// WiFi Credentials
+char ssid[] = "Sijj";
+char pass[] = "987654321";
+
+// Pin Definitions
+const int mq2Pin = 34;
+const int mq135Pin = 35;
+const int buzzerPin = 25;
+const int relayPin = 26;  // Relay connected here
+
+BlynkTimer timer;
+
+void sendSensorData() {
+  int mq2Value = analogRead(mq2Pin);
+  int mq135Value = analogRead(mq135Pin);
+  
+  // Send data to Blynk
+  Blynk.virtualWrite(V0, mq2Value);
+  Blynk.virtualWrite(V1, mq135Value);
+  
+  // Send data to Python
+  Serial.print(mq2Value);
+  Serial.print(",");
+  Serial.println(mq135Value);
+
+  // 🔥 Combined ALERT LOGIC
+  if (mq2Value > 700 || mq135Value > 4500) {
+    digitalWrite(buzzerPin, HIGH);   // Buzzer ON
+    digitalWrite(relayPin, HIGH);    // Fan ON
+  } 
+  else {
+    digitalWrite(buzzerPin, LOW);    // Buzzer OFF
+    digitalWrite(relayPin, LOW);     // Fan OFF
+  }
+}
+
+void setup() {
+  Serial.begin(115200);
+  
+  pinMode(mq2Pin, INPUT);
+  pinMode(mq135Pin, INPUT);
+  pinMode(buzzerPin, OUTPUT);
+  pinMode(relayPin, OUTPUT);
+
+  // Initial Safe State
+  digitalWrite(buzzerPin, LOW);
+  digitalWrite(relayPin, LOW);
+
+  // Connect to Blynk
+  Blynk.begin(BLYNK_AUTH_TOKEN, ssid, pass);
+  
+  // Run every 1 second
+  timer.setInterval(1000L, sendSensorData);
+}
+
+void loop() {
+  Blynk.run();
+  timer.run();
+}
